@@ -19,7 +19,7 @@ DB_PASSWORD = os.getenv("PGPASSWORD")
 DB_HOST = os.getenv("PGHOST")
 DB_PORT = os.getenv("PGPORT")
 
-DBC_URL = f"jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DB_NAME}"
+JDBC_URL = f"jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 CONN_PROP = {
     "user": DB_USER,
