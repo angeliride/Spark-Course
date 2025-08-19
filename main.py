@@ -1,10 +1,16 @@
 import os
+
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
-spark = (SparkSession.builder.appName("spark_course").master("local[*]").config("spark.jars.packages", "org.postgresql:postgresql:42.7.4").getOrCreate())
+spark = (
+    SparkSession.builder.appName("spark_course")
+    .master("local[*]")
+    .config("spark.jars.packages", "org.postgresql:postgresql:42.7.4")
+    .getOrCreate()
+)
 
 load_dotenv()
 DB_NAME = os.getenv("PGDATABASE")
@@ -13,7 +19,7 @@ DB_PASSWORD = os.getenv("PGPASSWORD")
 DB_HOST = os.getenv("PGHOST")
 DB_PORT = os.getenv("PGPORT")
 
-JDBC_URL = f"jdbc:postgresql://localhost:5432/pagila"
+DBC_URL = f"jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 CONN_PROP = {
     "user": DB_USER,
@@ -21,8 +27,10 @@ CONN_PROP = {
     "driver": "org.postgresql.Driver",
 }
 
+
 def load(table: str):
     return spark.read.jdbc(JDBC_URL, table=table, properties=CONN_PROP)
+
 
 actor = load("actor").cache()
 film = load("film").cache()
@@ -36,10 +44,9 @@ customer = load("customer").cache()
 address = load("address").cache()
 city = load("city").cache()
 
-#query 1
+# query 1
 films_per_category = (
-    film_category
-    .join(category, "category_id")
+    film_category.join(category, "category_id")
     .groupBy("name")
     .agg(F.countDistinct("film_id").alias("film_count"))
     .orderBy(F.desc("film_count"))
@@ -47,10 +54,9 @@ films_per_category = (
 
 films_per_category.show(truncate=False)
 
-#query 2
+# query 2
 actors_by_rental_duration = (
-    film_actor
-    .join(actor, "actor_id")
+    film_actor.join(actor, "actor_id")
     .join(film, "film_id")
     .groupBy("actor_id", "first_name", "last_name")
     .agg(F.sum("rental_duration").alias("total_rental_duration"))
@@ -60,10 +66,9 @@ actors_by_rental_duration = (
 
 actors_by_rental_duration.show()
 
-#query 3
+# query 3
 max_cost_category = (
-    film
-    .join(film_category, "film_id")
+    film.join(film_category, "film_id")
     .join(category, "category_id")
     .groupBy("name")
     .agg(F.sum("replacement_cost").alias("total_cost"))
@@ -73,21 +78,19 @@ max_cost_category = (
 
 max_cost_category.show()
 
-#query 4
+# query 4
 films_not_in_inventory = (
-    film.select("title").distinct()
-    .subtract(
-        film.join(inventory, "film_id").select("title")
-    )
+    film.select("title")
+    .distinct()
+    .subtract(film.join(inventory, "film_id").select("title"))
 )
 
 films_not_in_inventory.show(n=50, truncate=False)
 
 
-#query 5
+# query 5
 children_frequency_actors = (
-    actor
-    .join(film_actor, "actor_id")
+    actor.join(film_actor, "actor_id")
     .join(film, "film_id")
     .join(film_category, "film_id")
     .join(category, "category_id")
@@ -96,28 +99,27 @@ children_frequency_actors = (
     .agg(F.count("film_id").alias("film_count"))
     .orderBy(F.desc("film_count"))
     .limit(3)
-    )
+)
 
 children_frequency_actors.show()
 
-#query 6
+# query 6
 result = (
     city.join(address, city.city_id == address.city_id)
-        .join(customer, address.address_id == customer.address_id)
-        .groupBy(city.city)
-        .agg(
-            F.sum(F.when(customer.active == 1, 1).otherwise(0)).alias("active_clients"),
-            F.sum(F.when(customer.active == 0, 1).otherwise(0)).alias("inactive_clients")
-        )
-        .orderBy(F.desc("inactive_clients"))
+    .join(customer, address.address_id == customer.address_id)
+    .groupBy(city.city)
+    .agg(
+        F.sum(F.when(customer.active == 1, 1).otherwise(0)).alias("active_clients"),
+        F.sum(F.when(customer.active == 0, 1).otherwise(0)).alias("inactive_clients"),
+    )
+    .orderBy(F.desc("inactive_clients"))
 )
 
 result.show(n=500, truncate=False)
 
-#query 7
+# query 7
 rental_data = (
-    rental
-    .join(customer, "customer_id")
+    rental.join(customer, "customer_id")
     .join(address, "address_id")
     .join(city, "city_id")
     .join(inventory, "inventory_id")
@@ -146,6 +148,8 @@ grouped_dash = (
 grouped = grouped_a.unionByName(grouped_dash)
 window_spec = Window.partitionBy("group_type").orderBy(F.desc("total_hours"))
 ranked = grouped.withColumn("rnk", F.rank().over(window_spec))
-result = ranked.filter(F.col("rnk") == 1).select("group_type", F.col("name").alias("category_name"), "total_hours")
+result = ranked.filter(F.col("rnk") == 1).select(
+    "group_type", F.col("name").alias("category_name"), "total_hours"
+)
 
 result.show(truncate=False)
