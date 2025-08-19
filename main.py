@@ -51,7 +51,6 @@ films_per_category = (
     .agg(F.countDistinct("film_id").alias("film_count"))
     .orderBy(F.desc("film_count"))
 )
-
 films_per_category.show(truncate=False)
 
 # query 2
@@ -63,7 +62,6 @@ actors_by_rental_duration = (
     .orderBy(F.desc("total_rental_duration"))
     .limit(10)
 )
-
 actors_by_rental_duration.show()
 
 # query 3
@@ -75,7 +73,6 @@ max_cost_category = (
     .orderBy(F.desc("total_cost"))
     .limit(1)
 )
-
 max_cost_category.show()
 
 # query 4
@@ -84,7 +81,6 @@ films_not_in_inventory = (
     .distinct()
     .subtract(film.join(inventory, "film_id").select("title"))
 )
-
 films_not_in_inventory.show(n=50, truncate=False)
 
 
@@ -100,7 +96,6 @@ children_frequency_actors = (
     .orderBy(F.desc("film_count"))
     .limit(3)
 )
-
 children_frequency_actors.show()
 
 # query 6
@@ -114,7 +109,6 @@ result = (
     )
     .orderBy(F.desc("inactive_clients"))
 )
-
 result.show(n=500, truncate=False)
 
 # query 7
@@ -153,3 +147,5 @@ result = ranked.filter(F.col("rnk") == 1).select(
 )
 
 result.show(truncate=False)
+
+spark.stop()
